@@ -5,3 +5,6 @@ data/*.sqlite*
 data/analytics/
 .DS_Store
 tmp/
+.env
+.env.*
+data/answers/

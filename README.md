@@ -1,8 +1,9 @@
-# FlowSense: synthetic data and quantitative engine
+# FlowSense: synthetic flow intelligence prototype
 
 A small, reproducible Python fixture for macro quantitative research prototyping.
 It generates 2024–2025 observations for equities, government bonds, and FX in
-the US, Europe, and Asia. No Streamlit or LLM integration is included.
+the US, Europe, and Asia. Includes a descriptive analytics engine and a tool-backed
+LLM question-answering CLI. No Streamlit dashboard is included yet.
 
 ## Run
 
@@ -87,6 +88,83 @@ latent volatility are excluded from analytics to avoid using hidden scenario sta
 Analytics tests use hand-calculated examples, check group isolation and zero
 variance, confirm future observations cannot alter past metrics, and exercise the
 SQLite-to-analytics path. Passing them verifies calculations, not predictive value.
+
+## AI research assistant (milestone 03)
+
+The assistant uses the OpenAI Responses API and three predefined read-only tools:
+`describe_dataset`, `get_metrics`, and `get_divergences`. It has no SQL execution,
+Python execution, database modification, web search, or simulator-state tools.
+HTTPS uses the Python standard library, so no additional SDK dependency is needed.
+The implementation follows the [official function-calling guide](https://developers.openai.com/api/docs/guides/function-calling).
+
+First verify the tool layer offline (does not call an LLM or require credentials):
+
+```sh
+source .venv/bin/activate
+python -m scripts.ask_flowsense --check-tools
+python -m unittest discover -s tests -v
+```
+
+For live Q&A, configure a model available to your OpenAI API project that supports
+Responses function calling and structured JSON outputs. Set `OPENAI_MODEL` to that
+model's identifier, or pass `--model`. No model is hardcoded or silently substituted.
+In zsh, enter your API key without placing its literal value in shell history:
+
+```sh
+read -rs 'OPENAI_API_KEY?OpenAI API key: '; echo
+export OPENAI_API_KEY
+export OPENAI_MODEL='YOUR_AVAILABLE_MODEL_ID'
+python -m scripts.ask_flowsense "What stands out in the latest US equity flows?"
+python -m scripts.ask_flowsense "Compare equities and government bonds in Europe on 2025-12-31."
+python -m scripts.ask_flowsense "What do Asia FX flows show on 2024-01-05?" --output data/answers/example.json
+```
+
+The key must be supplied locally; never put it in source files or chat. `.env`
+files are ignored by Git, but the CLI does not automatically load them. Live
+questions send the question and selected synthetic tool evidence to OpenAI and
+incur API usage. The source SQLite database stays local and read-only. Requests
+set `store=false`; this does not override the API provider's other data policies.
+
+`--database`, `--window`, and `--position-lag` select the source and calculation
+settings. Each question is a fresh, independent session. Responses are limited
+to six API rounds, 12 tool calls, at most 3,000 output tokens per round, and a 45-second HTTP
+timeout. There are no automatic retries. The optional output JSON stores the
+question, model identifier, structured answer, tool arguments, and numeric evidence;
+it never stores API credentials.
+
+### Evidence and interpretation
+
+The model chooses tool calls; Python validates their arguments, executes existing
+analytics, and returns evidence IDs. Results include dates, window, position lag,
+matching/returned row counts, and a truncation flag. Queries return at most 60
+rows, newest date first; absent dates default to the latest date in the dataset,
+not the current wall-clock date. No full-period aggregates or rankings are exposed.
+The agent must say when the requested analysis exceeds these tools.
+
+Final output separates observations, unverified hypotheses, and limitations. Every
+observation must cite successful tool evidence from the current question; unknown
+citations are rejected. The terminal appends the actual tool output values so
+numbers can be independently checked. Null metrics remain unavailable, never zero.
+The assistant is instructed not to infer causes, real holdings, investment merit,
+or actual BNY activity from fabricated flows.
+
+Citation checks establish that evidence exists, **not that the model's prose is
+entailed by it**. Qualitative interpretations and hypothesis labeling still require
+review. Prompt instructions are not a guarantee against hallucinations. Raw tool
+values are the authoritative numeric record. Do not use answers for investment
+decisions. Unsupported questions should receive a limitation, not invented evidence.
+
+### Validation status
+
+Offline tests use a scripted fake API transport to check the tool loop, exact
+engine-to-tool values, dates, filters, truncation, null handling, invalid requests,
+fabricated citations, recovery, incomplete responses, and round limits. They do
+not exercise a real model or measure language-answer quality. At implementation
+time no API key was configured, so live model quality, model compatibility, and
+credential/network success remain unverified. Before demoing, run the three sample
+questions above, a causal question ("Why did flows change?"), and an unsupported
+request ("What were actual BNY flows today?"); inspect observations against the
+printed evidence and ensure unsupported claims are declined or clearly qualified.
 
 ## Schema
 
