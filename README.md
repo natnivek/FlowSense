@@ -229,3 +229,7 @@ Do not use it to infer actual investor activity, assess investment performance,
 or claim that a research signal will work on real data. Regime and volatility
 labels expose simulator state and should not be treated as observable predictors
 in a realistic backtest.
+
+## Dashboard and demo
+
+See [DEMO.md](DEMO.md) for local setup, validation, and the two-minute walkthrough.
