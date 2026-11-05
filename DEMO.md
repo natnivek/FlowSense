@@ -9,7 +9,9 @@ python -m unittest discover -s tests -v
 python -m streamlit run streamlit_demo.py --server.address localhost
 ```
 
-Use an existing generated database if available. For live Q&A, set
+The dashboard generates its synthetic SQLite dataset on first launch if it is missing.
+Streamlit Community Cloud installs the pinned dependencies from `requirements.txt`.
+For live Q&A, set
 `OPENAI_API_KEY` and `OPENAI_MODEL` in the same terminal **before** starting
 Streamlit. See the README for credential setup. The charts work without them.
 

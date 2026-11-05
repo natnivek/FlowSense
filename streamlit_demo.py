@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pandas as pd
 
@@ -8,6 +9,7 @@ import streamlit as st
 
 from flowsense.agent import AnalyticsTools, ask
 from flowsense.analytics import calculate_metrics, load_flows
+from flowsense.generator import generate_data, save_to_sqlite
 
 st.set_page_config(page_title="FlowSense", layout="wide")
 st.title("FlowSense")
@@ -16,8 +18,15 @@ st.caption("Synthetic data — not actual BNY iFlow")
 database = Path(__file__).resolve().parent / "data" / "flowsense.sqlite"
 
 if not database.is_file():
-    st.error("Dataset not found. Run `python -m scripts.generate_data` first.")
-    st.stop()
+    database.parent.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(dir=database.parent) as temporary:
+        staged = Path(temporary) / database.name
+        save_to_sqlite(generate_data(), staged)
+        # Publish the completed database without overwriting another session's copy.
+        try:
+            database.hardlink_to(staged)
+        except FileExistsError:
+            pass
 
 
 @st.cache_data(max_entries=2)

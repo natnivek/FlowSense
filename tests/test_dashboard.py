@@ -40,6 +40,22 @@ class DashboardTests(unittest.TestCase):
             self.assertFalse(app.exception)
             self.assertTrue(app.metric[0].value.startswith("-137.5"))
 
+    def test_fresh_checkout_generates_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app_path = Path(directory) / self.app.name
+            shutil.copyfile(self.app, app_path)
+            database = app_path.parent / "data" / "flowsense.sqlite"
+            with patch.dict(os.environ, {"OPENAI_API_KEY": "", "OPENAI_MODEL": ""}):
+                app = AppTest.from_file(str(app_path)).run()
+                self.assertFalse(app.exception)
+                self.assertFalse(app.error)
+                self.assertTrue(database.is_file())
+                self.assertEqual(app.metric[1].value, "+0.53")
+                modified_at = database.stat().st_mtime_ns
+                app.run()
+                self.assertFalse(app.exception)
+                self.assertEqual(database.stat().st_mtime_ns, modified_at)
+
     def test_question_runs_real_tool_loop_and_retains_evidence(self):
         arguments = {"region": "US", "asset_class": "equities",
                      "start_date": None, "end_date": None, "limit": 1}
